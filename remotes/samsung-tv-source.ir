@@ -1,0 +1,15 @@
+# Paste the contents of your working Samsung Flipper .ir file here.
+#
+# Expected source:
+#   Flipper SD card -> infrared/<your Samsung remote>.ir
+#
+# This file should include commands like:
+#   Power
+#   Up
+#   Down
+#   Left
+#   Right
+#   Select
+#   Return
+#   VOL+
+#   VOL-
