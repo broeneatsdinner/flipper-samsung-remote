@@ -94,7 +94,7 @@ The destination on the Flipper SD card is:
 
 ## Test notes
 
-1. Launch `Samsung Remote`.
+1. Launch `Samsung Physical Remote`.
 2. Confirm Up/Down toggles between `Power` and `Simulate Remote`.
 3. Confirm OK on `Power` toggles the Samsung TV power state.
 4. Enter `Simulate Remote` and confirm Up/Down taps still send TV navigation.
@@ -106,4 +106,4 @@ The destination on the Flipper SD card is:
 
 ## Status
 
-v1.0 has been built with `ufbt`, launched on a physical Flipper Zero, and tested successfully against the target Samsung TV.
+v1.0.2 has been built with `ufbt`, launched on a physical Flipper Zero, and tested successfully against the target Samsung TV.
