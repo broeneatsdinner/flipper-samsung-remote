@@ -12,9 +12,31 @@ The goal is not to build a universal remote. The goal is to make the Flipper Zer
 - In physical mode, Up/Down released before 2000 ms send TV navigation. Holding Up/Down for at least 2000 ms starts volume repeat with `VOL+`/`VOL-` every 500 ms.
 - Left/Right send TV navigation, `OK` sends `Select`, Back released before 3000 ms sends `Return`, and Back held for at least 3000 ms returns to the home screen while still held.
 
-## Build
+## Build and install
 
-Install the Flipper Zero external app toolchain, then build from this repository:
+This is a Flipper Zero external application. It is built with `ufbt`, the standard tool for building Flipper apps outside the main firmware tree.
+
+### Step 1: Install `ufbt`
+
+You need Python 3 and `ufbt`.
+
+```sh
+python3 -m pip install --upgrade ufbt
+```
+
+### Step 2: Clone this repository
+
+```sh
+git clone https://github.com/broeneatsdinner/flipper-samsung-remote.git
+```
+
+### Step 3: Enter the repository directory
+
+```sh
+cd flipper-samsung-remote
+```
+
+### Step 4: Build the app
 
 ```sh
 ufbt
@@ -22,15 +44,53 @@ ufbt
 
 The app is defined by `application.fam` and builds as an external FAP named `samsung_remote`.
 
-## Install
+The built app will be written under:
 
-With a Flipper Zero connected over USB:
+```text
+dist/
+```
+
+### Step 5: Connect your Flipper Zero
+
+Connect the Flipper Zero to your computer over USB.
+
+Make sure the Flipper has an SD card installed.
+
+### Step 6: Install and launch the app
 
 ```sh
 ufbt launch
 ```
 
-Alternatively, copy the built `.fap` from the `dist/` output directory to the Flipper's apps storage using qFlipper or another file manager.
+This builds the app, copies it to the Flipper, and launches it.
+
+### Step 7: Find the app on the Flipper later
+
+After installation, the app should remain available on the Flipper even when it is not connected over USB.
+
+Look for it under:
+
+```text
+Apps
+  Infrared
+    Samsung Physical Remote
+```
+
+When installed by `ufbt launch`, the app is copied to:
+
+```text
+/ext/apps/Infrared/samsung_remote.fap
+```
+
+### Manual install
+
+If you do not use `ufbt launch`, you can manually copy the built `.fap` file from `dist/` to the Flipper's apps storage using qFlipper or another file manager.
+
+The destination on the Flipper SD card is:
+
+```text
+/ext/apps/Infrared/
+```
 
 ## Test notes
 
