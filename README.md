@@ -42,12 +42,12 @@ cd flipper-samsung-remote
 ufbt
 ```
 
-The app is defined by `application.fam` and builds as an external FAP named `samsung_remote`.
+After the build finishes, `ufbt` creates a `dist/` directory inside this repository.
 
-The built app will be written under:
+The built Flipper app package will be inside that directory:
 
 ```text
-dist/
+dist/samsung_remote.fap
 ```
 
 ### Step 5: Connect your Flipper Zero
