@@ -92,6 +92,24 @@ The destination on the Flipper SD card is:
 /ext/apps/Infrared/
 ```
 
+## Remove from your Flipper
+
+This app installs as a single `.fap` file on the Flipper SD card.
+
+To remove it, connect the Flipper over USB, open the SD card with qFlipper or another file manager, and delete:
+
+```text
+/ext/apps/Infrared/samsung_remote.fap
+```
+
+After deleting the file, disconnect or reboot the Flipper. The app should no longer appear under:
+
+```text
+Apps
+  Infrared
+    Samsung Physical Remote
+```
+
 ## Test notes
 
 1. Launch `Samsung Physical Remote`.
