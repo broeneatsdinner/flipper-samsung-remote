@@ -40,3 +40,7 @@ Alternatively, copy the built `.fap` from the `dist/` output directory to the Fl
 5. Confirm short Back does not exit the app in physical mode.
 6. Confirm long Back returns to the home screen.
 7. Confirm Back from the home screen exits the app.
+
+## Status
+
+v0 has been built with `ufbt`, launched on a physical Flipper Zero, and tested successfully against the target Samsung TV.
