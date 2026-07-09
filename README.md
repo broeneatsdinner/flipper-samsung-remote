@@ -9,7 +9,7 @@ The goal is not to build a universal remote. The goal is to make the Flipper Zer
 - Starts on a `Samsung Remote` home screen.
 - `Power` sends the Samsung TV `POWER` infrared command.
 - `Simulate Remote` enters a physical-button remote mode.
-- In physical mode, arrows send TV navigation, `OK` sends `Select`, short `Back` sends `Return`, and long `Back` returns to the home screen.
+- In physical mode, arrows send TV navigation, `OK` sends `Select`, Back held for less than 700 ms sends `Return`, and Back held for at least 700 ms returns to the home screen.
 
 ## Build
 
@@ -36,9 +36,9 @@ Alternatively, copy the built `.fap` from the `dist/` output directory to the Fl
 1. Launch `Samsung Remote`.
 2. Confirm Up/Down toggles between `Power` and `Simulate Remote`.
 3. Confirm OK on `Power` toggles the Samsung TV power state.
-4. Enter `Simulate Remote` and confirm arrows, OK, and short Back control TV navigation.
-5. Confirm short Back does not exit the app in physical mode.
-6. Confirm long Back returns to the home screen.
+4. Enter `Simulate Remote` and confirm arrows, OK, and a Back tap control TV navigation.
+5. Confirm a Back tap does not exit the app in physical mode.
+6. Confirm holding Back for at least 700 ms returns to the home screen without sending `Return`.
 7. Confirm Back from the home screen exits the app.
 
 ## Status

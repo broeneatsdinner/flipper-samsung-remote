@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define SAMSUNG_REMOTE_BACK_HOLD_MS 700
+
 typedef enum {
     SamsungRemoteScreenHome,
     SamsungRemoteScreenPhysical,
@@ -24,6 +26,8 @@ typedef struct {
     InfraredWorker* ir_worker;
     SamsungRemoteScreen screen;
     SamsungRemoteHomeItem selected;
+    uint32_t back_press_tick;
+    bool back_pressed;
     bool running;
 } SamsungRemoteApp;
 
@@ -122,6 +126,7 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
         if(app->selected == SamsungRemoteHomePower) {
             samsung_remote_send(app, "POWER");
         } else {
+            app->back_pressed = false;
             app->screen = SamsungRemoteScreenPhysical;
         }
     } else if(event->key == InputKeyBack) {
@@ -130,8 +135,26 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
 }
 
 static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const InputEvent* event) {
-    if(event->type == InputTypeLong && event->key == InputKeyBack) {
-        app->screen = SamsungRemoteScreenHome;
+    if(event->key == InputKeyBack && event->type == InputTypePress) {
+        app->back_press_tick = furi_get_tick();
+        app->back_pressed = true;
+        return;
+    }
+
+    if(event->key == InputKeyBack && event->type == InputTypeRelease) {
+        if(!app->back_pressed) {
+            return;
+        }
+
+        const uint32_t held_ticks = furi_get_tick() - app->back_press_tick;
+        app->back_pressed = false;
+
+        if(held_ticks >= furi_ms_to_ticks(SAMSUNG_REMOTE_BACK_HOLD_MS)) {
+            app->screen = SamsungRemoteScreenHome;
+        } else {
+            samsung_remote_send(app, "Return");
+        }
+
         return;
     }
 
@@ -149,8 +172,6 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
         samsung_remote_send(app, "Right");
     } else if(event->key == InputKeyOk) {
         samsung_remote_send(app, "Select");
-    } else if(event->key == InputKeyBack) {
-        samsung_remote_send(app, "Return");
     }
 }
 
@@ -164,6 +185,8 @@ int32_t samsung_remote_app(void* p) {
     app->ir_worker = infrared_worker_alloc();
     app->screen = SamsungRemoteScreenHome;
     app->selected = SamsungRemoteHomePower;
+    app->back_press_tick = 0;
+    app->back_pressed = false;
     app->running = true;
 
     infrared_worker_tx_set_get_signal_callback(
