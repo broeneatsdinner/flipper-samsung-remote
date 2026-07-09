@@ -96,7 +96,7 @@ static void samsung_remote_reset_volume_hold(SamsungRemoteApp* app) {
 static void samsung_remote_draw_home(Canvas* canvas, SamsungRemoteApp* app) {
     canvas_clear(canvas);
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 2, 12, "Samsung Remote");
+    canvas_draw_str(canvas, 2, 12, "Samsung Physical");
 
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 8, 32, "Power");

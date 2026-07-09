@@ -1,6 +1,6 @@
-# Flipper Samsung Remote
+# Samsung Physical Remote for Flipper Zero
 
-A minimal Flipper Zero Samsung TV infrared remote app.
+A minimal Flipper Zero app that turns known-working Samsung TV IR codes into a physical-button replacement remote.
 
 The goal is not to build a universal remote. The goal is to make the Flipper Zero behave like a simple physical Samsung TV remote, using known-working IR codes from a saved Flipper Infrared remote.
 
