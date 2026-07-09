@@ -3,7 +3,8 @@
 ## Assumptions
 
 - v0 uses parsed Samsung32 IR messages hardcoded in `samsung_remote.c`.
-- Physical remote mode uses an explicit 700 ms Back hold threshold instead of Flipper's default long-press threshold.
+- Physical remote mode uses an explicit 3000 ms Back hold threshold instead of Flipper's default long-press threshold.
+- A successful Back hold returns Home while Back is still held; the later release is ignored.
 - `Hold Back = Home` on the physical remote screen means returning to the app's home menu. It does not send the Samsung `Menu` IR command.
 - No hold-volume or directional hold behavior is implemented in v0.
 
@@ -23,5 +24,5 @@
 - Physical `Left`: `Left`
 - Physical `Right`: `Right`
 - Physical `OK`: `Select`
-- Physical Back held for less than 700 ms: `Return`
-- Physical Back held for at least 700 ms: return to app Home screen, no IR command
+- Physical Back released before 3000 ms: `Return`
+- Physical Back held for at least 3000 ms: return to app Home screen while held, no IR command

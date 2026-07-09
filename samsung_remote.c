@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SAMSUNG_REMOTE_BACK_HOLD_MS 700
+#define SAMSUNG_REMOTE_BACK_HOLD_MS 3000
 
 typedef enum {
     SamsungRemoteScreenHome,
@@ -28,6 +28,7 @@ typedef struct {
     SamsungRemoteHomeItem selected;
     uint32_t back_press_tick;
     bool back_pressed;
+    bool back_hold_handled;
     bool running;
 } SamsungRemoteApp;
 
@@ -127,6 +128,7 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
             samsung_remote_send(app, "POWER");
         } else {
             app->back_pressed = false;
+            app->back_hold_handled = false;
             app->screen = SamsungRemoteScreenPhysical;
         }
     } else if(event->key == InputKeyBack) {
@@ -138,6 +140,7 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
     if(event->key == InputKeyBack && event->type == InputTypePress) {
         app->back_press_tick = furi_get_tick();
         app->back_pressed = true;
+        app->back_hold_handled = false;
         return;
     }
 
@@ -146,12 +149,11 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
             return;
         }
 
-        const uint32_t held_ticks = furi_get_tick() - app->back_press_tick;
+        const bool send_return = !app->back_hold_handled;
         app->back_pressed = false;
+        app->back_hold_handled = false;
 
-        if(held_ticks >= furi_ms_to_ticks(SAMSUNG_REMOTE_BACK_HOLD_MS)) {
-            app->screen = SamsungRemoteScreenHome;
-        } else {
+        if(send_return) {
             samsung_remote_send(app, "Return");
         }
 
@@ -175,6 +177,53 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
     }
 }
 
+static void samsung_remote_handle_back_hold(SamsungRemoteApp* app) {
+    if(app->screen != SamsungRemoteScreenPhysical || !app->back_pressed || app->back_hold_handled) {
+        return;
+    }
+
+    const uint32_t held_ticks = furi_get_tick() - app->back_press_tick;
+    if(held_ticks >= furi_ms_to_ticks(SAMSUNG_REMOTE_BACK_HOLD_MS)) {
+        app->back_hold_handled = true;
+        app->screen = SamsungRemoteScreenHome;
+        view_port_update(app->view_port);
+    }
+}
+
+static uint32_t samsung_remote_event_timeout(SamsungRemoteApp* app) {
+    if(app->screen != SamsungRemoteScreenPhysical || !app->back_pressed || app->back_hold_handled) {
+        return FuriWaitForever;
+    }
+
+    const uint32_t held_ticks = furi_get_tick() - app->back_press_tick;
+    const uint32_t hold_ticks = furi_ms_to_ticks(SAMSUNG_REMOTE_BACK_HOLD_MS);
+
+    if(held_ticks >= hold_ticks) {
+        return 0;
+    }
+
+    return hold_ticks - held_ticks;
+}
+
+static bool samsung_remote_consume_handled_back_event(
+    SamsungRemoteApp* app,
+    const InputEvent* event) {
+    if(!app->back_hold_handled || event->key != InputKeyBack) {
+        return false;
+    }
+
+    if(event->type == InputTypePress) {
+        app->back_hold_handled = false;
+        return false;
+    }
+
+    if(event->type == InputTypeRelease) {
+        app->back_pressed = false;
+    }
+
+    return true;
+}
+
 int32_t samsung_remote_app(void* p) {
     UNUSED(p);
 
@@ -187,6 +236,7 @@ int32_t samsung_remote_app(void* p) {
     app->selected = SamsungRemoteHomePower;
     app->back_press_tick = 0;
     app->back_pressed = false;
+    app->back_hold_handled = false;
     app->running = true;
 
     infrared_worker_tx_set_get_signal_callback(
@@ -198,14 +248,19 @@ int32_t samsung_remote_app(void* p) {
 
     InputEvent event;
     while(app->running) {
-        if(furi_message_queue_get(app->event_queue, &event, FuriWaitForever) == FuriStatusOk) {
-            if(app->screen == SamsungRemoteScreenHome) {
-                samsung_remote_handle_home_input(app, &event);
-            } else {
-                samsung_remote_handle_physical_input(app, &event);
+        const uint32_t event_timeout = samsung_remote_event_timeout(app);
+        if(furi_message_queue_get(app->event_queue, &event, event_timeout) == FuriStatusOk) {
+            if(!samsung_remote_consume_handled_back_event(app, &event)) {
+                if(app->screen == SamsungRemoteScreenHome) {
+                    samsung_remote_handle_home_input(app, &event);
+                } else {
+                    samsung_remote_handle_physical_input(app, &event);
+                }
             }
 
             view_port_update(app->view_port);
+        } else {
+            samsung_remote_handle_back_hold(app);
         }
     }
 
