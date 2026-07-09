@@ -1,0 +1,10 @@
+App(
+    appid="samsung_remote",
+    name="Samsung Remote",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="samsung_remote_app",
+    stack_size=2048,
+    fap_category="Infrared",
+    fap_description="Minimal Samsung TV infrared remote",
+    fap_author="broen",
+)
