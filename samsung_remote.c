@@ -8,6 +8,8 @@
 #include <string.h>
 
 #define SAMSUNG_REMOTE_BACK_HOLD_MS 3000
+#define SAMSUNG_REMOTE_VOLUME_HOLD_MS 2000
+#define SAMSUNG_REMOTE_VOLUME_REPEAT_MS 500
 
 typedef enum {
     SamsungRemoteScreenHome,
@@ -19,6 +21,12 @@ typedef enum {
     SamsungRemoteHomeSimulate,
 } SamsungRemoteHomeItem;
 
+typedef enum {
+    SamsungRemoteVolumeButtonNone,
+    SamsungRemoteVolumeButtonUp,
+    SamsungRemoteVolumeButtonDown,
+} SamsungRemoteVolumeButton;
+
 typedef struct {
     FuriMessageQueue* event_queue;
     ViewPort* view_port;
@@ -29,6 +37,10 @@ typedef struct {
     uint32_t back_press_tick;
     bool back_pressed;
     bool back_hold_handled;
+    SamsungRemoteVolumeButton volume_button;
+    uint32_t volume_press_tick;
+    uint32_t volume_last_repeat_tick;
+    bool volume_repeat_active;
     bool running;
 } SamsungRemoteApp;
 
@@ -51,6 +63,8 @@ static const SamsungIrCommand samsung_ir_commands[] = {
     {"Right", {InfraredProtocolSamsung32, 0x00000007, 0x00000062, false}},
     {"Select", {InfraredProtocolSamsung32, 0x00000007, 0x00000068, false}},
     {"Return", {InfraredProtocolSamsung32, 0x00000007, 0x00000058, false}},
+    {"VOL+", {InfraredProtocolSamsung32, 0x00000007, 0x00000007, false}},
+    {"VOL-", {InfraredProtocolSamsung32, 0x00000007, 0x0000000B, false}},
 };
 
 static const InfraredMessage* samsung_remote_find_message(const char* name) {
@@ -70,6 +84,13 @@ static void samsung_remote_send(SamsungRemoteApp* app, const char* name) {
     infrared_worker_set_decoded_signal(app->ir_worker, message);
     infrared_worker_tx_start(app->ir_worker);
     infrared_worker_tx_stop(app->ir_worker);
+}
+
+static void samsung_remote_reset_volume_hold(SamsungRemoteApp* app) {
+    app->volume_button = SamsungRemoteVolumeButtonNone;
+    app->volume_press_tick = 0;
+    app->volume_last_repeat_tick = 0;
+    app->volume_repeat_active = false;
 }
 
 static void samsung_remote_draw_home(Canvas* canvas, SamsungRemoteApp* app) {
@@ -93,8 +114,8 @@ static void samsung_remote_draw_physical(Canvas* canvas) {
     canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 2, 27, "Arrows = TV nav");
     canvas_draw_str(canvas, 2, 38, "OK = Select");
-    canvas_draw_str(canvas, 2, 49, "Back = Return");
-    canvas_draw_str(canvas, 2, 60, "Hold Back = Home");
+    canvas_draw_str(canvas, 2, 49, "Hold U/D = Vol");
+    canvas_draw_str(canvas, 2, 60, "Back = Return/Home");
 }
 
 static void samsung_remote_draw_callback(Canvas* canvas, void* context) {
@@ -129,6 +150,7 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
         } else {
             app->back_pressed = false;
             app->back_hold_handled = false;
+            samsung_remote_reset_volume_hold(app);
             app->screen = SamsungRemoteScreenPhysical;
         }
     } else if(event->key == InputKeyBack) {
@@ -137,6 +159,43 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
 }
 
 static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const InputEvent* event) {
+    if((event->key == InputKeyUp || event->key == InputKeyDown) && event->type == InputTypePress) {
+        app->volume_button = event->key == InputKeyUp ? SamsungRemoteVolumeButtonUp :
+                                                     SamsungRemoteVolumeButtonDown;
+        app->volume_press_tick = furi_get_tick();
+        app->volume_last_repeat_tick = 0;
+        app->volume_repeat_active = false;
+        return;
+    }
+
+    if((event->key == InputKeyUp || event->key == InputKeyDown) && event->type == InputTypeRelease) {
+        const bool up_released =
+            event->key == InputKeyUp && app->volume_button == SamsungRemoteVolumeButtonUp;
+        const bool down_released =
+            event->key == InputKeyDown && app->volume_button == SamsungRemoteVolumeButtonDown;
+
+        if(!up_released && !down_released) {
+            return;
+        }
+
+        const uint32_t held_ticks = furi_get_tick() - app->volume_press_tick;
+        const bool send_nav =
+            !app->volume_repeat_active &&
+            held_ticks < furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_HOLD_MS);
+        const bool send_volume =
+            !app->volume_repeat_active &&
+            held_ticks >= furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_HOLD_MS);
+        samsung_remote_reset_volume_hold(app);
+
+        if(send_nav) {
+            samsung_remote_send(app, event->key == InputKeyUp ? "Up" : "Down");
+        } else if(send_volume) {
+            samsung_remote_send(app, event->key == InputKeyUp ? "VOL+" : "VOL-");
+        }
+
+        return;
+    }
+
     if(event->key == InputKeyBack && event->type == InputTypePress) {
         app->back_press_tick = furi_get_tick();
         app->back_pressed = true;
@@ -164,10 +223,8 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
         return;
     }
 
-    if(event->key == InputKeyUp) {
-        samsung_remote_send(app, "Up");
-    } else if(event->key == InputKeyDown) {
-        samsung_remote_send(app, "Down");
+    if(event->key == InputKeyUp || event->key == InputKeyDown) {
+        return;
     } else if(event->key == InputKeyLeft) {
         samsung_remote_send(app, "Left");
     } else if(event->key == InputKeyRight) {
@@ -185,12 +242,41 @@ static void samsung_remote_handle_back_hold(SamsungRemoteApp* app) {
     const uint32_t held_ticks = furi_get_tick() - app->back_press_tick;
     if(held_ticks >= furi_ms_to_ticks(SAMSUNG_REMOTE_BACK_HOLD_MS)) {
         app->back_hold_handled = true;
+        samsung_remote_reset_volume_hold(app);
         app->screen = SamsungRemoteScreenHome;
         view_port_update(app->view_port);
     }
 }
 
-static uint32_t samsung_remote_event_timeout(SamsungRemoteApp* app) {
+static void samsung_remote_handle_volume_hold(SamsungRemoteApp* app) {
+    if(app->screen != SamsungRemoteScreenPhysical ||
+       app->volume_button == SamsungRemoteVolumeButtonNone) {
+        return;
+    }
+
+    const uint32_t now = furi_get_tick();
+    const char* command = app->volume_button == SamsungRemoteVolumeButtonUp ? "VOL+" : "VOL-";
+
+    if(!app->volume_repeat_active) {
+        const uint32_t held_ticks = now - app->volume_press_tick;
+        if(held_ticks < furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_HOLD_MS)) {
+            return;
+        }
+
+        app->volume_repeat_active = true;
+        app->volume_last_repeat_tick = now;
+        samsung_remote_send(app, command);
+        return;
+    }
+
+    const uint32_t repeat_ticks = furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_REPEAT_MS);
+    if(now - app->volume_last_repeat_tick >= repeat_ticks) {
+        app->volume_last_repeat_tick = now;
+        samsung_remote_send(app, command);
+    }
+}
+
+static uint32_t samsung_remote_back_timeout(SamsungRemoteApp* app) {
     if(app->screen != SamsungRemoteScreenPhysical || !app->back_pressed || app->back_hold_handled) {
         return FuriWaitForever;
     }
@@ -203,6 +289,57 @@ static uint32_t samsung_remote_event_timeout(SamsungRemoteApp* app) {
     }
 
     return hold_ticks - held_ticks;
+}
+
+static uint32_t samsung_remote_volume_timeout(SamsungRemoteApp* app) {
+    if(app->screen != SamsungRemoteScreenPhysical ||
+       app->volume_button == SamsungRemoteVolumeButtonNone) {
+        return FuriWaitForever;
+    }
+
+    const uint32_t now = furi_get_tick();
+
+    if(!app->volume_repeat_active) {
+        const uint32_t held_ticks = now - app->volume_press_tick;
+        const uint32_t hold_ticks = furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_HOLD_MS);
+
+        if(held_ticks >= hold_ticks) {
+            return 0;
+        }
+
+        return hold_ticks - held_ticks;
+    }
+
+    const uint32_t repeat_ticks = furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_REPEAT_MS);
+    const uint32_t elapsed_ticks = now - app->volume_last_repeat_tick;
+
+    if(elapsed_ticks >= repeat_ticks) {
+        return 0;
+    }
+
+    return repeat_ticks - elapsed_ticks;
+}
+
+static uint32_t samsung_remote_timeout_min(uint32_t left, uint32_t right) {
+    if(left == FuriWaitForever) {
+        return right;
+    }
+
+    if(right == FuriWaitForever) {
+        return left;
+    }
+
+    return left < right ? left : right;
+}
+
+static uint32_t samsung_remote_event_timeout(SamsungRemoteApp* app) {
+    return samsung_remote_timeout_min(
+        samsung_remote_back_timeout(app), samsung_remote_volume_timeout(app));
+}
+
+static void samsung_remote_handle_timeouts(SamsungRemoteApp* app) {
+    samsung_remote_handle_back_hold(app);
+    samsung_remote_handle_volume_hold(app);
 }
 
 static bool samsung_remote_consume_handled_back_event(
@@ -237,6 +374,7 @@ int32_t samsung_remote_app(void* p) {
     app->back_press_tick = 0;
     app->back_pressed = false;
     app->back_hold_handled = false;
+    samsung_remote_reset_volume_hold(app);
     app->running = true;
 
     infrared_worker_tx_set_get_signal_callback(
@@ -260,7 +398,7 @@ int32_t samsung_remote_app(void* p) {
 
             view_port_update(app->view_port);
         } else {
-            samsung_remote_handle_back_hold(app);
+            samsung_remote_handle_timeouts(app);
         }
     }
 
