@@ -93,6 +93,14 @@ static void samsung_remote_reset_volume_hold(SamsungRemoteApp* app) {
     app->volume_repeat_active = false;
 }
 
+static void samsung_remote_set_screen(SamsungRemoteApp* app, SamsungRemoteScreen screen) {
+    app->screen = screen;
+    view_port_set_orientation(
+        app->view_port,
+        screen == SamsungRemoteScreenPhysical ? ViewPortOrientationVertical :
+                                                ViewPortOrientationHorizontal);
+}
+
 static void samsung_remote_draw_home(Canvas* canvas, SamsungRemoteApp* app) {
     canvas_clear(canvas);
     canvas_set_font(canvas, FontPrimary);
@@ -108,14 +116,20 @@ static void samsung_remote_draw_home(Canvas* canvas, SamsungRemoteApp* app) {
 
 static void samsung_remote_draw_physical(Canvas* canvas) {
     canvas_clear(canvas);
+
     canvas_set_font(canvas, FontPrimary);
-    canvas_draw_str(canvas, 2, 12, "Physical Remote");
+    canvas_draw_str(canvas, 2, 12, "Samsung");
+    canvas_draw_str(canvas, 2, 24, "Remote");
 
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 2, 27, "Arrows = TV nav");
-    canvas_draw_str(canvas, 2, 38, "OK = Select");
-    canvas_draw_str(canvas, 2, 49, "Hold U/D = Vol");
-    canvas_draw_str(canvas, 2, 60, "Back = Return/Home");
+    canvas_draw_str(canvas, 2, 42, "Arrows");
+    canvas_draw_str(canvas, 8, 53, "= TV nav");
+    canvas_draw_str(canvas, 2, 66, "OK");
+    canvas_draw_str(canvas, 8, 77, "= Select");
+    canvas_draw_str(canvas, 2, 90, "Hold U/D");
+    canvas_draw_str(canvas, 8, 101, "= Vol");
+    canvas_draw_str(canvas, 2, 114, "Back");
+    canvas_draw_str(canvas, 2, 125, "= Ret/Home");
 }
 
 static void samsung_remote_draw_callback(Canvas* canvas, void* context) {
@@ -151,7 +165,7 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
             app->back_pressed = false;
             app->back_hold_handled = false;
             samsung_remote_reset_volume_hold(app);
-            app->screen = SamsungRemoteScreenPhysical;
+            samsung_remote_set_screen(app, SamsungRemoteScreenPhysical);
         }
     } else if(event->key == InputKeyBack) {
         app->running = false;
@@ -159,16 +173,18 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
 }
 
 static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const InputEvent* event) {
-    if((event->key == InputKeyUp || event->key == InputKeyDown) && event->type == InputTypePress) {
+    if((event->key == InputKeyUp || event->key == InputKeyDown) &&
+       event->type == InputTypePress) {
         app->volume_button = event->key == InputKeyUp ? SamsungRemoteVolumeButtonUp :
-                                                     SamsungRemoteVolumeButtonDown;
+                                                       SamsungRemoteVolumeButtonDown;
         app->volume_press_tick = furi_get_tick();
         app->volume_last_repeat_tick = 0;
         app->volume_repeat_active = false;
         return;
     }
 
-    if((event->key == InputKeyUp || event->key == InputKeyDown) && event->type == InputTypeRelease) {
+    if((event->key == InputKeyUp || event->key == InputKeyDown) &&
+       event->type == InputTypeRelease) {
         const bool up_released =
             event->key == InputKeyUp && app->volume_button == SamsungRemoteVolumeButtonUp;
         const bool down_released =
@@ -243,7 +259,7 @@ static void samsung_remote_handle_back_hold(SamsungRemoteApp* app) {
     if(held_ticks >= furi_ms_to_ticks(SAMSUNG_REMOTE_BACK_HOLD_MS)) {
         app->back_hold_handled = true;
         samsung_remote_reset_volume_hold(app);
-        app->screen = SamsungRemoteScreenHome;
+        samsung_remote_set_screen(app, SamsungRemoteScreenHome);
         view_port_update(app->view_port);
     }
 }
@@ -382,6 +398,7 @@ int32_t samsung_remote_app(void* p) {
 
     view_port_draw_callback_set(app->view_port, samsung_remote_draw_callback, app);
     view_port_input_callback_set(app->view_port, samsung_remote_input_callback, app->event_queue);
+    view_port_set_orientation(app->view_port, ViewPortOrientationHorizontal);
     gui_add_view_port(app->gui, app->view_port, GuiLayerFullscreen);
 
     InputEvent event;

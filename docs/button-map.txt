@@ -1,12 +1,15 @@
 REMOTE: /ext/infrared/Samsung.ir
+HOME: normal Flipper orientation
+SIMULATE_REMOTE: rotated physical mode; hold Flipper sideways with IR facing TV
 UP: Up
 DOWN: Down
 LEFT: Left
 RIGHT: Right
 OK: Select
 BACK: Return
-UPHOLD: VOL+
-DOWNHOLD: VOL-
-LEFTHOLD: Source
-RIGHTHOLD: Exit
-OKHOLD: POWER
+BACKHOLD_3000MS: Home
+UPHOLD_2000MS_REPEAT_500MS: VOL+
+DOWNHOLD_2000MS_REPEAT_500MS: VOL-
+LEFTHOLD: none
+RIGHTHOLD: none
+OKHOLD: none

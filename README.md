@@ -9,8 +9,10 @@ The goal is not to build a universal remote. The goal is to make the Flipper Zer
 - Starts on a `Samsung Remote` home screen.
 - `Power` sends the Samsung TV `POWER` infrared command.
 - `Simulate Remote` enters a physical-button remote mode.
+- The home screen stays in the normal Flipper orientation. Physical remote mode rotates the app view for holding the Flipper sideways with the IR transmitter pointed at the TV.
+- In physical mode, the D-pad arrows still send the matching TV navigation directions in the orientation shown on screen.
 - In physical mode, Up/Down released before 2000 ms send TV navigation. Holding Up/Down for at least 2000 ms starts volume repeat with `VOL+`/`VOL-` every 500 ms.
-- Left/Right send TV navigation, `OK` sends `Select`, Back released before 3000 ms sends `Return`, and Back held for at least 3000 ms returns to the home screen while still held.
+- `OK` sends `Select`, Back released before 3000 ms sends `Return`, and Back held for at least 3000 ms returns to the home screen while still held.
 
 ## Build and install
 
@@ -115,12 +117,15 @@ Apps
 1. Launch `Samsung Physical Remote`.
 2. Confirm Up/Down toggles between `Power` and `Simulate Remote`.
 3. Confirm OK on `Power` toggles the Samsung TV power state.
-4. Enter `Simulate Remote` and confirm Up/Down taps still send TV navigation.
-5. Confirm holding Up/Down for at least 2000 ms sends `VOL+`/`VOL-` repeatedly every 500 ms until release.
-6. Confirm Left/Right, OK, and a Back tap control TV navigation.
-7. Confirm a Back tap does not exit the app in physical mode.
-8. Confirm holding Back for at least 3000 ms returns to the home screen before release and does not send `Return`.
-9. Confirm Back from the home screen exits the app.
+4. Enter `Simulate Remote` and confirm the physical remote screen is rotated while the home screen remains normal.
+5. Hold the Flipper sideways with the IR transmitter facing the TV.
+6. Confirm Up/Down/Left/Right send the matching TV navigation directions in the orientation shown on screen.
+7. Confirm holding Up/Down for at least 2000 ms sends `VOL+`/`VOL-` repeatedly every 500 ms until release.
+8. Confirm Left/Right do not trigger volume hold.
+9. Confirm OK and a Back tap control TV Select and Return.
+10. Confirm a Back tap does not exit the app in physical mode.
+11. Confirm holding Back for at least 3000 ms returns to the home screen before release and does not send `Return`.
+12. Confirm Back from the home screen exits the app.
 
 ## Status
 
