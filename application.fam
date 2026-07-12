@@ -6,5 +6,6 @@ App(
     stack_size=2048,
     fap_category="Infrared",
     fap_description="Physical-button Samsung TV IR remote",
+    fap_icon="samsung_remote.png",
     fap_author="broen",
 )
