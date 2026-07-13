@@ -10,6 +10,8 @@
 #define SAMSUNG_REMOTE_BACK_HOLD_MS 3000
 #define SAMSUNG_REMOTE_VOLUME_HOLD_MS 2000
 #define SAMSUNG_REMOTE_VOLUME_REPEAT_MS 500
+#define SAMSUNG_REMOTE_TX_GAP_MS 150
+#define SAMSUNG_REMOTE_TX_QUEUE_SIZE 8
 
 typedef enum {
     SamsungRemoteScreenHome,
@@ -41,6 +43,12 @@ typedef struct {
     uint32_t volume_press_tick;
     uint32_t volume_last_repeat_tick;
     bool volume_repeat_active;
+    const char* tx_queue[SAMSUNG_REMOTE_TX_QUEUE_SIZE];
+    uint8_t tx_queue_head;
+    uint8_t tx_queue_tail;
+    uint8_t tx_queue_count;
+    uint32_t tx_last_tick;
+    bool tx_sent_once;
     bool running;
 } SamsungRemoteApp;
 
@@ -84,6 +92,35 @@ static void samsung_remote_send(SamsungRemoteApp* app, const char* name) {
     infrared_worker_set_decoded_signal(app->ir_worker, message);
     infrared_worker_tx_start(app->ir_worker);
     infrared_worker_tx_stop(app->ir_worker);
+}
+
+static void samsung_remote_reset_tx_queue(SamsungRemoteApp* app) {
+    app->tx_queue_head = 0;
+    app->tx_queue_tail = 0;
+    app->tx_queue_count = 0;
+    app->tx_last_tick = 0;
+    app->tx_sent_once = false;
+}
+
+static void samsung_remote_enqueue_send(SamsungRemoteApp* app, const char* name) {
+    furi_check(samsung_remote_find_message(name));
+
+    if(app->tx_queue_count >= SAMSUNG_REMOTE_TX_QUEUE_SIZE) {
+        return;
+    }
+
+    app->tx_queue[app->tx_queue_tail] = name;
+    app->tx_queue_tail = (app->tx_queue_tail + 1) % SAMSUNG_REMOTE_TX_QUEUE_SIZE;
+    app->tx_queue_count++;
+}
+
+static const char* samsung_remote_tx_queue_pop(SamsungRemoteApp* app) {
+    furi_check(app->tx_queue_count > 0);
+
+    const char* name = app->tx_queue[app->tx_queue_head];
+    app->tx_queue_head = (app->tx_queue_head + 1) % SAMSUNG_REMOTE_TX_QUEUE_SIZE;
+    app->tx_queue_count--;
+    return name;
 }
 
 static void samsung_remote_reset_volume_hold(SamsungRemoteApp* app) {
@@ -160,7 +197,7 @@ static void samsung_remote_handle_home_input(SamsungRemoteApp* app, const InputE
         }
     } else if(event->key == InputKeyOk) {
         if(app->selected == SamsungRemoteHomePower) {
-            samsung_remote_send(app, "POWER");
+            samsung_remote_enqueue_send(app, "POWER");
         } else {
             app->back_pressed = false;
             app->back_hold_handled = false;
@@ -204,9 +241,9 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
         samsung_remote_reset_volume_hold(app);
 
         if(send_nav) {
-            samsung_remote_send(app, event->key == InputKeyUp ? "Up" : "Down");
+            samsung_remote_enqueue_send(app, event->key == InputKeyUp ? "Up" : "Down");
         } else if(send_volume) {
-            samsung_remote_send(app, event->key == InputKeyUp ? "VOL+" : "VOL-");
+            samsung_remote_enqueue_send(app, event->key == InputKeyUp ? "VOL+" : "VOL-");
         }
 
         return;
@@ -229,7 +266,7 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
         app->back_hold_handled = false;
 
         if(send_return) {
-            samsung_remote_send(app, "Return");
+            samsung_remote_enqueue_send(app, "Return");
         }
 
         return;
@@ -242,11 +279,11 @@ static void samsung_remote_handle_physical_input(SamsungRemoteApp* app, const In
     if(event->key == InputKeyUp || event->key == InputKeyDown) {
         return;
     } else if(event->key == InputKeyLeft) {
-        samsung_remote_send(app, "Left");
+        samsung_remote_enqueue_send(app, "Left");
     } else if(event->key == InputKeyRight) {
-        samsung_remote_send(app, "Right");
+        samsung_remote_enqueue_send(app, "Right");
     } else if(event->key == InputKeyOk) {
-        samsung_remote_send(app, "Select");
+        samsung_remote_enqueue_send(app, "Select");
     }
 }
 
@@ -281,15 +318,34 @@ static void samsung_remote_handle_volume_hold(SamsungRemoteApp* app) {
 
         app->volume_repeat_active = true;
         app->volume_last_repeat_tick = now;
-        samsung_remote_send(app, command);
+        samsung_remote_enqueue_send(app, command);
         return;
     }
 
     const uint32_t repeat_ticks = furi_ms_to_ticks(SAMSUNG_REMOTE_VOLUME_REPEAT_MS);
     if(now - app->volume_last_repeat_tick >= repeat_ticks) {
         app->volume_last_repeat_tick = now;
-        samsung_remote_send(app, command);
+        samsung_remote_enqueue_send(app, command);
     }
+}
+
+static void samsung_remote_handle_tx_queue(SamsungRemoteApp* app) {
+    if(app->tx_queue_count == 0) {
+        return;
+    }
+
+    const uint32_t now = furi_get_tick();
+    if(app->tx_sent_once) {
+        const uint32_t elapsed_ticks = now - app->tx_last_tick;
+        if(elapsed_ticks < furi_ms_to_ticks(SAMSUNG_REMOTE_TX_GAP_MS)) {
+            return;
+        }
+    }
+
+    const char* command = samsung_remote_tx_queue_pop(app);
+    samsung_remote_send(app, command);
+    app->tx_last_tick = furi_get_tick();
+    app->tx_sent_once = true;
 }
 
 static uint32_t samsung_remote_back_timeout(SamsungRemoteApp* app) {
@@ -336,6 +392,26 @@ static uint32_t samsung_remote_volume_timeout(SamsungRemoteApp* app) {
     return repeat_ticks - elapsed_ticks;
 }
 
+static uint32_t samsung_remote_tx_timeout(SamsungRemoteApp* app) {
+    if(app->tx_queue_count == 0) {
+        return FuriWaitForever;
+    }
+
+    if(!app->tx_sent_once) {
+        return 0;
+    }
+
+    const uint32_t now = furi_get_tick();
+    const uint32_t gap_ticks = furi_ms_to_ticks(SAMSUNG_REMOTE_TX_GAP_MS);
+    const uint32_t elapsed_ticks = now - app->tx_last_tick;
+
+    if(elapsed_ticks >= gap_ticks) {
+        return 0;
+    }
+
+    return gap_ticks - elapsed_ticks;
+}
+
 static uint32_t samsung_remote_timeout_min(uint32_t left, uint32_t right) {
     if(left == FuriWaitForever) {
         return right;
@@ -350,12 +426,15 @@ static uint32_t samsung_remote_timeout_min(uint32_t left, uint32_t right) {
 
 static uint32_t samsung_remote_event_timeout(SamsungRemoteApp* app) {
     return samsung_remote_timeout_min(
-        samsung_remote_back_timeout(app), samsung_remote_volume_timeout(app));
+        samsung_remote_timeout_min(
+            samsung_remote_back_timeout(app), samsung_remote_volume_timeout(app)),
+        samsung_remote_tx_timeout(app));
 }
 
 static void samsung_remote_handle_timeouts(SamsungRemoteApp* app) {
     samsung_remote_handle_back_hold(app);
     samsung_remote_handle_volume_hold(app);
+    samsung_remote_handle_tx_queue(app);
 }
 
 static bool samsung_remote_consume_handled_back_event(
@@ -391,6 +470,7 @@ int32_t samsung_remote_app(void* p) {
     app->back_pressed = false;
     app->back_hold_handled = false;
     samsung_remote_reset_volume_hold(app);
+    samsung_remote_reset_tx_queue(app);
     app->running = true;
 
     infrared_worker_tx_set_get_signal_callback(

@@ -31,3 +31,9 @@ In this mode, the Flipper physical buttons control the Samsung TV. The app home 
 
 Short Back must not exit the app while in Simulate Remote mode.
 Back release after a handled long Back must be ignored.
+
+## IR transmit pacing
+
+Button-triggered IR commands must be queued and sent through a paced transmit loop. Rapid repeated taps must result in distinct Samsung IR transmissions separated by at least the transmit gap.
+
+The transmit queue must not block input handling. If it fills, the newest command may be dropped.

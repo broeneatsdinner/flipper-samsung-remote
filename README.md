@@ -13,6 +13,7 @@ The goal is not to build a universal remote. The goal is to make the Flipper Zer
 - In physical mode, the D-pad arrows still send the matching TV navigation directions in the orientation shown on screen.
 - In physical mode, Up/Down released before 2000 ms send TV navigation. Holding Up/Down for at least 2000 ms starts volume repeat with `VOL+`/`VOL-` every 500 ms.
 - `OK` sends `Select`, Back released before 3000 ms sends `Return`, and Back held for at least 3000 ms returns to the home screen while still held.
+- IR commands from button actions are queued and paced so rapid repeated taps are transmitted as distinct commands instead of being collapsed by the TV.
 
 ## Build and install
 
@@ -125,7 +126,8 @@ Apps
 9. Confirm OK and a Back tap control TV Select and Return.
 10. Confirm a Back tap does not exit the app in physical mode.
 11. Confirm holding Back for at least 3000 ms returns to the home screen before release and does not send `Return`.
-12. Confirm Back from the home screen exits the app.
+12. Confirm quick repeated direction taps, such as Right then Right, are both received by the TV as separate commands.
+13. Confirm Back from the home screen exits the app.
 
 ## Status
 
