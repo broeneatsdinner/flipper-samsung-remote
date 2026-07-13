@@ -11,7 +11,7 @@ The goal is not to build a universal remote. The goal is to make the Flipper Zer
 - `Simulate Remote` enters a physical-button remote mode.
 - The home screen stays in the normal Flipper orientation. Physical remote mode rotates the app view for holding the Flipper sideways with the IR transmitter pointed at the TV.
 - In physical mode, the D-pad arrows still send the matching TV navigation directions in the orientation shown on screen.
-- In physical mode, Up/Down released before 2000 ms send TV navigation. Holding Up/Down for at least 2000 ms starts volume repeat with `VOL+`/`VOL-` every 500 ms.
+- In physical mode, Up/Down released before 2000 ms send TV navigation. Holding Up/Down for at least 2000 ms starts volume repeat with `VOL+`/`VOL-` every 200 ms.
 - `OK` sends `Select`, Back released before 3000 ms sends `Return`, and Back held for at least 3000 ms returns to the home screen while still held.
 - IR commands from button actions are queued and paced so rapid repeated taps are transmitted as distinct commands instead of being collapsed by the TV.
 
@@ -121,7 +121,7 @@ Apps
 4. Enter `Simulate Remote` and confirm the physical remote screen is rotated while the home screen remains normal.
 5. Hold the Flipper sideways with the IR transmitter facing the TV.
 6. Confirm Up/Down/Left/Right send the matching TV navigation directions in the orientation shown on screen.
-7. Confirm holding Up/Down for at least 2000 ms sends `VOL+`/`VOL-` repeatedly every 500 ms until release.
+7. Confirm holding Up/Down for at least 2000 ms sends `VOL+`/`VOL-` repeatedly every 200 ms until release.
 8. Confirm Left/Right do not trigger volume hold.
 9. Confirm OK and a Back tap control TV Select and Return.
 10. Confirm a Back tap does not exit the app in physical mode.

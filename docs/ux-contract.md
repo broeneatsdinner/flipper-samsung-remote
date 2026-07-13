@@ -22,8 +22,8 @@ In this mode, the Flipper physical buttons control the Samsung TV. The app home 
 - Down sends Samsung Down.
 - Left sends Samsung Left.
 - Right sends Samsung Right.
-- Holding Up for at least 2000 ms repeats Samsung VOL+ every 500 ms until release.
-- Holding Down for at least 2000 ms repeats Samsung VOL- every 500 ms until release.
+- Holding Up for at least 2000 ms repeats Samsung VOL+ every 200 ms until release.
+- Holding Down for at least 2000 ms repeats Samsung VOL- every 200 ms until release.
 - Left and Right do not trigger volume hold.
 - OK sends Samsung Select / Enter.
 - Short Back sends Samsung Return / Back.

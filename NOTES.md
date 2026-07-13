@@ -8,7 +8,7 @@
 - Physical remote mode keeps the D-pad mapped to the visible arrow directions in the rotated screen orientation.
 - Physical remote mode uses an explicit 3000 ms Back hold threshold instead of Flipper's default long-press threshold.
 - A successful Back hold returns Home while Back is still held; the later release is ignored.
-- Physical remote mode uses explicit 2000 ms volume hold thresholds and 500 ms volume repeat intervals.
+- Physical remote mode uses explicit 2000 ms volume hold thresholds and 200 ms volume repeat intervals.
 - User-triggered IR commands are enqueued in a fixed-size ring buffer and transmitted with a 150 ms gap so rapid repeated taps remain distinct.
 - If the transmit queue is full, the newest command is dropped instead of blocking input handling.
 - `Hold Back = Home` on the physical remote screen means returning to the app's home menu. It does not send the Samsung `Menu` IR command.
@@ -27,8 +27,8 @@
 - Home `Power`: `POWER`
 - Physical `Up`: `Up`
 - Physical `Down`: `Down`
-- Physical Up held for at least 2000 ms: repeat `VOL+` every 500 ms until release
-- Physical Down held for at least 2000 ms: repeat `VOL-` every 500 ms until release
+- Physical Up held for at least 2000 ms: repeat `VOL+` every 200 ms until release
+- Physical Down held for at least 2000 ms: repeat `VOL-` every 200 ms until release
 - Physical `Left`: `Left`
 - Physical `Right`: `Right`
 - Physical `OK`: `Select`
